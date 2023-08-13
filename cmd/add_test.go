@@ -12,62 +12,69 @@ import (
 )
 
 func TestRunAddCmd(t *testing.T) {
-	out := &bytes.Buffer{}
-	repo := testutil.NewRepo(t)
-
-	err := runAddCmd(out, repo, "", "")
-	testutil.AssertNoErr(t, err)
-	assertOutput(t, out, fmt.Sprintf("Added work day #1 on %v\n", util.FormatDate(time.Now())))
-
-	gotRecord, err := repo.GetWorkDayByDate(util.TodayAtMidnight())
-	testutil.AssertNoErr(t, err)
-	testutil.AssertWorkDay(t, gotRecord, model.WorkDay{
-		Id:         1,
-		Date:       util.TodayAtMidnight(),
-		LengthMins: 7.5 * 60,
-		CreatedAt:  time.Now(),
-		UpdatedAt:  time.Now(),
-	})
-}
-
-func TestRunAddDateArgCmd(t *testing.T) {
-	out := &bytes.Buffer{}
-	repo := testutil.NewRepo(t)
-
-	err := runAddCmd(out, repo, "2023-08-10", "")
-	testutil.AssertNoErr(t, err)
-	assertOutput(t, out, "Added work day #1 on 2023-08-10\n")
-
-	date := time.Date(2023, 8, 10, 0, 0, 0, 0, time.Local)
-	gotRecord, err := repo.GetWorkDayByDate(date)
-	testutil.AssertNoErr(t, err)
-	testutil.AssertWorkDay(t, gotRecord, model.WorkDay{
-		Id:         1,
-		Date:       date,
-		LengthMins: 7.5 * 60,
-		CreatedAt:  time.Now(),
-		UpdatedAt:  time.Now(),
-	})
-}
-
-func TestRunAddWithLengthCmd(t *testing.T) {
-	out := &bytes.Buffer{}
-	repo := testutil.NewRepo(t)
-
-	err := runAddCmd(out, repo, "2023-08-13", "4h30m")
-	testutil.AssertNoErr(t, err)
-	assertOutput(t, out, "Added work day #1 on 2023-08-13\n")
+	type testCase struct {
+		title           string
+		dateStr         string
+		lengthStr       string
+		expectedOutput  string
+		expectedWorkDay model.WorkDay
+	}
 
 	date := time.Date(2023, 8, 13, 0, 0, 0, 0, time.Local)
-	gotRecord, err := repo.GetWorkDayByDate(date)
-	testutil.AssertNoErr(t, err)
-	testutil.AssertWorkDay(t, gotRecord, model.WorkDay{
-		Id:         1,
-		Date:       date,
-		LengthMins: 4.5 * 60,
-		CreatedAt:  time.Now(),
-		UpdatedAt:  time.Now(),
-	})
+
+	testCases := []testCase{
+		{
+			title:          "add default",
+			expectedOutput: fmt.Sprintf("Added work day #1 on %v\n", util.FormatDate(time.Now())),
+			expectedWorkDay: model.WorkDay{
+				Id:         1,
+				Date:       util.TodayAtMidnight(),
+				LengthMins: 7.5 * 60,
+				CreatedAt:  time.Now(),
+				UpdatedAt:  time.Now(),
+			},
+		},
+		{
+			title:          "add with date arg",
+			dateStr:        "2023-08-13",
+			expectedOutput: "Added work day #1 on 2023-08-13\n",
+			expectedWorkDay: model.WorkDay{
+				Id:         1,
+				Date:       date,
+				LengthMins: 7.5 * 60,
+				CreatedAt:  time.Now(),
+				UpdatedAt:  time.Now(),
+			},
+		},
+		{
+			title:          "add with length arg",
+			dateStr:        "2023-08-13",
+			lengthStr:      "1h30m",
+			expectedOutput: "Added work day #1 on 2023-08-13\n",
+			expectedWorkDay: model.WorkDay{
+				Id:         1,
+				Date:       date,
+				LengthMins: 90,
+				CreatedAt:  time.Now(),
+				UpdatedAt:  time.Now(),
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.title, func(t *testing.T) {
+			out := &bytes.Buffer{}
+			repo := testutil.NewRepo(t)
+
+			err := runAddCmd(out, repo, tc.dateStr, tc.lengthStr)
+			testutil.AssertNoErr(t, err)
+			assertOutput(t, out, tc.expectedOutput)
+
+			gotRecord, err := repo.GetWorkDayByDate(tc.expectedWorkDay.Date)
+			testutil.AssertNoErr(t, err)
+			testutil.AssertWorkDay(t, gotRecord, tc.expectedWorkDay)
+		})
+	}
 }
 
 func TestRunAddCmdExistingDay(t *testing.T) {
