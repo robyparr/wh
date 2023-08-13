@@ -15,7 +15,7 @@ import (
 )
 
 var addCmd = &cobra.Command{
-	Use:   "add",
+	Use:   "add [date]",
 	Short: "Adds a new work day",
 	Run: func(cmd *cobra.Command, args []string) {
 		repo, err := repository.NewRepo("./db.sqlite")
@@ -28,19 +28,24 @@ var addCmd = &cobra.Command{
 			dateStr = args[0]
 		}
 
-		if err := runAddCmd(os.Stdout, repo, dateStr); err != nil {
+		lengthStr, err := cmd.Flags().GetString("length")
+		if err != nil {
+			log.Fatalln(err)
+		}
+
+		if err := runAddCmd(os.Stdout, repo, dateStr, lengthStr); err != nil {
 			log.Fatalln(err)
 		}
 	},
 }
 
 func init() {
+	addCmd.Flags().StringP("length", "l", "", "work day length (e.g. 4h30m)")
 	rootCmd.AddCommand(addCmd)
 }
 
-func runAddCmd(w io.Writer, repo *repository.Repo, dateStr string) error {
+func runAddCmd(w io.Writer, repo *repository.Repo, dateStr string, lengthStr string) error {
 	date := util.TodayAtMidnight()
-
 	if dateStr != "" {
 		parsedDate, err := time.ParseInLocation(util.DateFormatStr, dateStr, time.Local)
 		if err != nil {
@@ -60,7 +65,17 @@ func runAddCmd(w io.Writer, repo *repository.Repo, dateStr string) error {
 		return nil
 	}
 
-	workDay, err = repo.CreateWorkDay(model.NewWorkDay(date))
+	workDay = model.NewWorkDay(date)
+	if lengthStr != "" {
+		dur, err := time.ParseDuration(lengthStr)
+		if err != nil {
+			return err
+		}
+
+		workDay.LengthMins = int(dur.Minutes())
+	}
+
+	workDay, err = repo.CreateWorkDay(workDay)
 	if err != nil {
 		return err
 	}
