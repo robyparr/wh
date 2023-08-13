@@ -28,12 +28,10 @@ var addCmd = &cobra.Command{
 			dateStr = args[0]
 		}
 
-		lengthStr, err := cmd.Flags().GetString("length")
-		if err != nil {
-			log.Fatalln(err)
-		}
+		lengthStr := mustGetStringFlag(cmd, "length")
+		noteStr := mustGetStringFlag(cmd, "note")
 
-		if err := runAddCmd(os.Stdout, repo, dateStr, lengthStr); err != nil {
+		if err := runAddCmd(os.Stdout, repo, dateStr, lengthStr, noteStr); err != nil {
 			log.Fatalln(err)
 		}
 	},
@@ -41,10 +39,11 @@ var addCmd = &cobra.Command{
 
 func init() {
 	addCmd.Flags().StringP("length", "l", "", "work day length (e.g. 4h30m)")
+	addCmd.Flags().StringP("note", "n", "", "work day note")
 	rootCmd.AddCommand(addCmd)
 }
 
-func runAddCmd(w io.Writer, repo *repository.Repo, dateStr string, lengthStr string) error {
+func runAddCmd(w io.Writer, repo *repository.Repo, dateStr string, lengthStr string, note string) error {
 	date := util.TodayAtMidnight()
 	if dateStr != "" {
 		parsedDate, err := time.ParseInLocation(util.DateFormatStr, dateStr, time.Local)
@@ -73,6 +72,10 @@ func runAddCmd(w io.Writer, repo *repository.Repo, dateStr string, lengthStr str
 		}
 
 		workDay.LengthMins = int(dur.Minutes())
+	}
+
+	if note != "" {
+		workDay.SetNote(note)
 	}
 
 	workDay, err = repo.CreateWorkDay(workDay)

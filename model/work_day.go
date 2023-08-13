@@ -22,3 +22,7 @@ func NewWorkDay(date time.Time) WorkDay {
 		LengthMins: defaultLengthMins,
 	}
 }
+
+func (w *WorkDay) SetNote(note string) {
+	w.Note = sql.NullString{String: note, Valid: true}
+}

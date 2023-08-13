@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"database/sql"
 	"fmt"
 	"testing"
 	"time"
@@ -16,11 +17,13 @@ func TestRunAddCmd(t *testing.T) {
 		title           string
 		dateStr         string
 		lengthStr       string
+		note            string
 		expectedOutput  string
 		expectedWorkDay model.WorkDay
 	}
 
 	date := time.Date(2023, 8, 13, 0, 0, 0, 0, time.Local)
+	var defaultLength int = 7.5 * 60
 
 	testCases := []testCase{
 		{
@@ -29,7 +32,7 @@ func TestRunAddCmd(t *testing.T) {
 			expectedWorkDay: model.WorkDay{
 				Id:         1,
 				Date:       util.TodayAtMidnight(),
-				LengthMins: 7.5 * 60,
+				LengthMins: defaultLength,
 				CreatedAt:  time.Now(),
 				UpdatedAt:  time.Now(),
 			},
@@ -41,7 +44,7 @@ func TestRunAddCmd(t *testing.T) {
 			expectedWorkDay: model.WorkDay{
 				Id:         1,
 				Date:       date,
-				LengthMins: 7.5 * 60,
+				LengthMins: defaultLength,
 				CreatedAt:  time.Now(),
 				UpdatedAt:  time.Now(),
 			},
@@ -59,6 +62,20 @@ func TestRunAddCmd(t *testing.T) {
 				UpdatedAt:  time.Now(),
 			},
 		},
+		{
+			title:          "add with note arg",
+			dateStr:        "2023-08-13",
+			note:           "This is a note.",
+			expectedOutput: "Added work day #1 on 2023-08-13\n",
+			expectedWorkDay: model.WorkDay{
+				Id:         1,
+				Date:       date,
+				Note:       sql.NullString{String: "This is a note.", Valid: true},
+				LengthMins: defaultLength,
+				CreatedAt:  time.Now(),
+				UpdatedAt:  time.Now(),
+			},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -66,7 +83,7 @@ func TestRunAddCmd(t *testing.T) {
 			out := &bytes.Buffer{}
 			repo := testutil.NewRepo(t)
 
-			err := runAddCmd(out, repo, tc.dateStr, tc.lengthStr)
+			err := runAddCmd(out, repo, tc.dateStr, tc.lengthStr, tc.note)
 			testutil.AssertNoErr(t, err)
 			assertOutput(t, out, tc.expectedOutput)
 
@@ -87,7 +104,7 @@ func TestRunAddCmdExistingDay(t *testing.T) {
 		LengthMins: 7.5 * 60,
 	})
 
-	err := runAddCmd(out, repo, "", "")
+	err := runAddCmd(out, repo, "", "", "")
 	testutil.AssertNoErr(t, err)
 	assertOutput(t, out, fmt.Sprintf("Work day on %s already exists.\n", util.FormatDate(today)))
 
