@@ -26,9 +26,9 @@ func AssertNoErr(t *testing.T, err error) {
 func AssertWorkDay(t *testing.T, got model.WorkDay, want model.WorkDay) {
 	t.Helper()
 
-	assertAroundTime(t, got.Date, want.Date)
-	assertAroundTime(t, got.CreatedAt, want.CreatedAt)
-	assertAroundTime(t, got.UpdatedAt, want.UpdatedAt)
+	assertAroundTime(t, "Date", got.Date, want.Date)
+	assertAroundTime(t, "CreatedAt", got.CreatedAt, want.CreatedAt)
+	assertAroundTime(t, "UpdatedAt", got.UpdatedAt, want.UpdatedAt)
 
 	got.Date = time.Time{}
 	got.CreatedAt = time.Time{}
@@ -43,13 +43,13 @@ func AssertWorkDay(t *testing.T, got model.WorkDay, want model.WorkDay) {
 	}
 }
 
-func assertAroundTime(t *testing.T, got time.Time, want time.Time) {
+func assertAroundTime(t *testing.T, label string, got time.Time, want time.Time) {
 	t.Helper()
 
 	min := want.Add(-1 * time.Second)
 	max := want.Add(1 * time.Second)
 
 	if got.Before(min) || got.After(max) {
-		t.Errorf("Expected %v to be around %v.\n", got, want)
+		t.Errorf("%s: Expected %v to be around %v.\n", label, got, want)
 	}
 }

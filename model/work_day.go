@@ -3,8 +3,6 @@ package model
 import (
 	"database/sql"
 	"time"
-
-	"github.com/robyparr/wh/util"
 )
 
 type WorkDay struct {
@@ -18,9 +16,9 @@ type WorkDay struct {
 
 const defaultLengthMins = 7.5 * 60
 
-func NewWorkDay() WorkDay {
+func NewWorkDay(date time.Time) WorkDay {
 	return WorkDay{
-		Date:       util.TodayAtMidnight(),
+		Date:       date,
 		LengthMins: defaultLengthMins,
 	}
 }

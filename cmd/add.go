@@ -5,6 +5,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"time"
 
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/robyparr/wh/model"
@@ -22,7 +23,12 @@ var addCmd = &cobra.Command{
 			log.Fatalln(err)
 		}
 
-		if err := runAddCmd(os.Stdout, repo); err != nil {
+		var dateStr string
+		if len(args) > 0 {
+			dateStr = args[0]
+		}
+
+		if err := runAddCmd(os.Stdout, repo, dateStr); err != nil {
 			log.Fatalln(err)
 		}
 	},
@@ -32,19 +38,29 @@ func init() {
 	rootCmd.AddCommand(addCmd)
 }
 
-func runAddCmd(w io.Writer, repo *repository.Repo) error {
-	midnight := util.TodayAtMidnight()
-	workDay, err := repo.GetWorkDayByDate(midnight)
+func runAddCmd(w io.Writer, repo *repository.Repo, dateStr string) error {
+	date := util.TodayAtMidnight()
+
+	if dateStr != "" {
+		parsedDate, err := time.ParseInLocation(util.DateFormatStr, dateStr, time.Local)
+		if err != nil {
+			return err
+		}
+
+		date = parsedDate
+	}
+
+	workDay, err := repo.GetWorkDayByDate(date)
 	if err != nil {
 		return err
 	}
 
 	if workDay.Id != 0 {
-		fmt.Fprintf(w, "Work day on %s already exists.\n", util.FormatDate(midnight))
+		fmt.Fprintf(w, "Work day on %s already exists.\n", util.FormatDate(date))
 		return nil
 	}
 
-	workDay, err = repo.CreateWorkDay(model.NewWorkDay())
+	workDay, err = repo.CreateWorkDay(model.NewWorkDay(date))
 	if err != nil {
 		return err
 	}
