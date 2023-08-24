@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/robyparr/wh/model"
+	"github.com/robyparr/wh/util"
 	"github.com/robyparr/wh/util/testutil"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -84,5 +85,69 @@ func TestGetWorkDayCount(t *testing.T) {
 		if got != 2 {
 			t.Errorf("Expected 2, got %d\n", got)
 		}
+	})
+}
+
+func TestCreateWorkPeriod(t *testing.T) {
+	repo := testutil.NewRepo(t)
+
+	workDay, err := repo.CreateWorkDay(model.WorkDay{Date: util.TodayAtMidnight()})
+	testutil.AssertNoErr(t, err)
+
+	workPeriod := model.WorkPeriod{
+		WorkDayId: workDay.Id,
+		StartAt:   util.TodayAtMidnight().Add(9 * time.Hour),
+		EndAt:     sql.NullTime{Time: util.TodayAtMidnight().Add(10 * time.Hour), Valid: true},
+	}
+
+	got, err := repo.CreateWorkPeriod(workPeriod)
+	testutil.AssertNoErr(t, err)
+
+	want := workPeriod
+	want.Id = 1
+	want.CreatedAt = time.Now()
+	want.UpdatedAt = time.Now()
+
+	testutil.AssertEqualStructs(t, got, want)
+
+	wpsFromDb, err := repo.GetWorkPeriods(workDay)
+	testutil.AssertNoErr(t, err)
+
+	if len(wpsFromDb) != 1 {
+		t.Errorf("Expected work day to have 1 work period but has %d", len(wpsFromDb))
+	}
+	testutil.AssertEqualStructs(t, got, wpsFromDb[0])
+}
+
+func TestGetWorkPeriods(t *testing.T) {
+	repo := testutil.NewRepo(t)
+	workDay, err := repo.CreateWorkDay(model.WorkDay{Date: util.TodayAtMidnight()})
+	testutil.AssertNoErr(t, err)
+
+	t.Run("no work periods", func(t *testing.T) {
+		gotWorkPeriods, err := repo.GetWorkPeriods(workDay)
+		testutil.AssertNoErr(t, err)
+
+		if len(gotWorkPeriods) != 0 {
+			t.Errorf("Expected 2 work periods, got %d", len(gotWorkPeriods))
+		}
+	})
+
+	t.Run("2 work periods", func(t *testing.T) {
+		workPeriod1, err := repo.CreateWorkPeriod(model.WorkPeriod{WorkDayId: workDay.Id, StartAt: time.Now()})
+		testutil.AssertNoErr(t, err)
+
+		workPeriod2, err := repo.CreateWorkPeriod(model.WorkPeriod{WorkDayId: workDay.Id, StartAt: time.Now()})
+		testutil.AssertNoErr(t, err)
+
+		gotWorkPeriods, err := repo.GetWorkPeriods(workDay)
+		testutil.AssertNoErr(t, err)
+
+		if len(gotWorkPeriods) != 2 {
+			t.Errorf("Expected 2 work periods, got %d", len(gotWorkPeriods))
+		}
+
+		testutil.AssertEqualStructs(t, workPeriod1, gotWorkPeriods[0])
+		testutil.AssertEqualStructs(t, workPeriod2, gotWorkPeriods[1])
 	})
 }

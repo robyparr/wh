@@ -1,6 +1,8 @@
 package util
 
-import "time"
+import (
+	"time"
+)
 
 const DateFormatStr string = "2006-01-02"
 

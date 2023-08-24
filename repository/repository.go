@@ -19,7 +19,21 @@ const schema string = `
 	);
 
 	CREATE UNIQUE INDEX IF NOT EXISTS idx_work_days_date on work_days(date);
+
+	CREATE TABLE IF NOT EXISTS work_periods (
+		id					INTEGER PRIMARY KEY,
+		work_day_id	INTEGER NOT NULL,
+		start_at		DATETIME NOT NULL,
+		end_at			DATETIME,
+		note				TEXT,
+		created_at	DATETIME NOT NULL,
+		updated_at	DATETIME NOT NULL,
+
+		FOREIGN KEY(work_day_id) REFERENCES work_days(id)
+	);
 `
+
+const DefaultDatabasePath string = "./db.sqlite"
 
 func NewRepo(filepath string) (*Repo, error) {
 	db, err := sqlx.Open("sqlite3", filepath)
@@ -32,7 +46,8 @@ func NewRepo(filepath string) (*Repo, error) {
 		return nil, err
 	}
 
-	if err := db.Ping(); err != nil {
+	_, err = db.Exec("PRAGMA foreign_keys = ON;")
+	if err != nil {
 		return nil, err
 	}
 
@@ -89,4 +104,36 @@ func (r *Repo) GetWorkDayCount() (int, error) {
 	}
 
 	return count, nil
+}
+
+func (r *Repo) CreateWorkPeriod(period model.WorkPeriod) (model.WorkPeriod, error) {
+	now := time.Now()
+	period.CreatedAt = now
+	period.UpdatedAt = now
+
+	result, err := r.db.NamedExec(`
+		INSERT INTO work_periods (work_day_id, start_at, end_at, created_at, updated_at)
+		VALUES (:work_day_id, :start_at, :end_at, :created_at, :updated_at)
+	`, period)
+
+	if err != nil {
+		return model.WorkPeriod{}, err
+	}
+
+	id, err := result.LastInsertId()
+	if err != nil {
+		return model.WorkPeriod{}, nil
+	}
+
+	period.Id = int(id)
+	return period, nil
+}
+
+func (r *Repo) GetWorkPeriods(workDay model.WorkDay) ([]model.WorkPeriod, error) {
+	var periods []model.WorkPeriod
+	if err := r.db.Select(&periods, "SELECT * FROM work_periods WHERE work_day_id = ?", workDay.Id); err != nil {
+		return []model.WorkPeriod{}, err
+	}
+
+	return periods, nil
 }

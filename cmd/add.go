@@ -18,7 +18,7 @@ var addCmd = &cobra.Command{
 	Use:   "add [date]",
 	Short: "Adds a new work day",
 	Run: func(cmd *cobra.Command, args []string) {
-		repo, err := repository.NewRepo("./db.sqlite")
+		repo, err := repository.NewRepo(repository.DefaultDatabasePath)
 		if err != nil {
 			log.Fatalln(err)
 		}

@@ -1,7 +1,10 @@
 package testutil
 
 import (
+	"database/sql"
+	"fmt"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -43,13 +46,56 @@ func AssertWorkDay(t *testing.T, got model.WorkDay, want model.WorkDay) {
 	}
 }
 
+func AssertEqualStructs(t *testing.T, got any, want any) {
+	t.Helper()
+
+	gotStructValue := reflect.ValueOf(got)
+	wantStructValue := reflect.ValueOf(want)
+	structType := gotStructValue.Type()
+
+	mismatches := []string{"Structs are not equal."}
+	for i := 0; i < gotStructValue.NumField(); i++ {
+		gotFieldValue := gotStructValue.Field(i)
+		wantFieldValue := wantStructValue.Field(i)
+
+		gotValue := gotFieldValue.Interface()
+		wantValue := wantFieldValue.Interface()
+
+		var isEqual bool
+		switch gotFieldValue.Type().Name() {
+		case "Time":
+			isEqual = isAroundTime(gotValue.(time.Time), wantValue.(time.Time))
+		case "NullTime":
+			gotNullTime := gotValue.(sql.NullTime)
+			wantNullTime := wantValue.(sql.NullTime)
+
+			isEqual = gotNullTime.Valid == wantNullTime.Valid && isAroundTime(gotNullTime.Time, wantNullTime.Time)
+		default:
+			isEqual = gotValue == wantValue
+		}
+
+		if !isEqual {
+			fieldInfo := structType.Field(i)
+			mismatches = append(mismatches, fmt.Sprintf("%s: got '%v', want '%v'", fieldInfo.Name, gotValue, wantValue))
+		}
+	}
+
+	if len(mismatches) > 1 {
+		t.Errorf(strings.Join(mismatches, "\n\t"))
+	}
+}
+
 func assertAroundTime(t *testing.T, label string, got time.Time, want time.Time) {
 	t.Helper()
 
-	min := want.Add(-1 * time.Second)
-	max := want.Add(1 * time.Second)
-
-	if got.Before(min) || got.After(max) {
+	if !isAroundTime(got, want) {
 		t.Errorf("%s: Expected %v to be around %v.\n", label, got, want)
 	}
+}
+
+func isAroundTime(t time.Time, aroundT time.Time) bool {
+	min := aroundT.Add(-1 * time.Second)
+	max := aroundT.Add(1 * time.Second)
+
+	return t.After(min) && t.Before(max)
 }
