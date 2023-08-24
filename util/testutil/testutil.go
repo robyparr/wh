@@ -1,6 +1,7 @@
 package testutil
 
 import (
+	"bytes"
 	"database/sql"
 	"fmt"
 	"reflect"
@@ -23,6 +24,15 @@ func AssertNoErr(t *testing.T, err error) {
 	t.Helper()
 	if err != nil {
 		t.Fatal("Unexpected error:", err)
+	}
+}
+
+func AssertOutput(t *testing.T, got *bytes.Buffer, want string) {
+	t.Helper()
+
+	out := got.String()
+	if out != want {
+		t.Errorf("Unexpected output:\ngot: %s\nwant: %s\n", got, want)
 	}
 }
 

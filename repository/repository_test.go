@@ -114,7 +114,7 @@ func TestCreateWorkPeriod(t *testing.T) {
 	testutil.AssertNoErr(t, err)
 
 	if len(wpsFromDb) != 1 {
-		t.Errorf("Expected work day to have 1 work period but has %d", len(wpsFromDb))
+		t.Fatalf("Expected work day to have 1 work period but has %d", len(wpsFromDb))
 	}
 	testutil.AssertEqualStructs(t, got, wpsFromDb[0])
 }

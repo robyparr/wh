@@ -85,7 +85,7 @@ func TestRunAddCmd(t *testing.T) {
 
 			err := runAddCmd(out, repo, tc.dateStr, tc.lengthStr, tc.note)
 			testutil.AssertNoErr(t, err)
-			assertOutput(t, out, tc.expectedOutput)
+			testutil.AssertOutput(t, out, tc.expectedOutput)
 
 			gotRecord, err := repo.GetWorkDayByDate(tc.expectedWorkDay.Date)
 			testutil.AssertNoErr(t, err)
@@ -106,7 +106,7 @@ func TestRunAddCmdExistingDay(t *testing.T) {
 
 	err := runAddCmd(out, repo, "", "", "")
 	testutil.AssertNoErr(t, err)
-	assertOutput(t, out, fmt.Sprintf("Work day on %s already exists.\n", util.FormatDate(today)))
+	testutil.AssertOutput(t, out, fmt.Sprintf("Work day on %s already exists.\n", util.FormatDate(today)))
 
 	gotCount, err := repo.GetWorkDayCount()
 	testutil.AssertNoErr(t, err)
@@ -114,14 +114,5 @@ func TestRunAddCmdExistingDay(t *testing.T) {
 	wantCount := 1
 	if gotCount != wantCount {
 		t.Errorf("Unexpected work day count; got %d, want %d\n", gotCount, wantCount)
-	}
-}
-
-func assertOutput(t *testing.T, got *bytes.Buffer, want string) {
-	t.Helper()
-
-	out := got.String()
-	if out != want {
-		t.Errorf("Unexpected output:\ngot: %s\nwant: %s\n", got, want)
 	}
 }

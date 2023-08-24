@@ -44,12 +44,9 @@ func init() {
 }
 
 func runStartCmd(out io.Writer, repo *repository.Repo, timeStr string) error {
-	workDay, err := repo.GetWorkDayByDate(util.TodayAtMidnight())
-	if err != nil {
-		return fmt.Errorf("error loading work day: %v", err)
-	}
-
+	midnight := util.TodayAtMidnight()
 	startAt := time.Now()
+
 	switch {
 	case exactTimeRegex.MatchString(timeStr):
 		duration, err := parseExactTimeString(timeStr)
@@ -57,7 +54,7 @@ func runStartCmd(out io.Writer, repo *repository.Repo, timeStr string) error {
 			return fmt.Errorf("error parsing time string:, %v", err)
 		}
 
-		startAt = util.TodayAtMidnight().Add(duration)
+		startAt = midnight.Add(duration)
 
 	case relativeTimeRegex.MatchString(timeStr):
 		duration, err := time.ParseDuration(timeStr)
@@ -68,13 +65,28 @@ func runStartCmd(out io.Writer, repo *repository.Repo, timeStr string) error {
 		startAt = startAt.Add(duration)
 	}
 
+	workDay, err := repo.GetWorkDayByDate(midnight)
+	if err != nil {
+		return fmt.Errorf("error loading work day: %v", err)
+	}
+
+	outFormatString := "Started tracking time on work day #%d (%s).\n"
+	if workDay.Id == 0 {
+		workDay, err = repo.CreateWorkDay(model.WorkDay{Date: midnight})
+		if err != nil {
+			return fmt.Errorf("error creating new work day: %v", err)
+		}
+
+		outFormatString = "Started tracking time on NEW work day #%d (%s).\n"
+	}
+
 	period := model.WorkPeriod{WorkDayId: workDay.Id, StartAt: startAt}
 	_, err = repo.CreateWorkPeriod(period)
 	if err != nil {
-		return err
+		return fmt.Errorf("error creating work period: %v", err)
 	}
 
-	fmt.Fprintf(out, "Started tracking time on work day #%d (%s).\n", workDay.Id, util.FormatDate(workDay.Date))
+	fmt.Fprintf(out, outFormatString, workDay.Id, util.FormatDate(workDay.Date))
 	return nil
 }
 
