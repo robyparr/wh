@@ -14,12 +14,12 @@ type WorkDay struct {
 	UpdatedAt  time.Time `db:"updated_at"`
 }
 
-const defaultLengthMins int = 7.5 * 60
+const DefaultDayLengthMins int = 7.5 * 60
 
 func NewWorkDay(date time.Time) WorkDay {
 	return WorkDay{
 		Date:       date,
-		LengthMins: defaultLengthMins,
+		LengthMins: DefaultDayLengthMins,
 	}
 }
 

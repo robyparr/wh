@@ -72,7 +72,7 @@ func runStartCmd(out io.Writer, repo *repository.Repo, timeStr string) error {
 
 	outFormatString := "Started tracking time on work day #%d (%s).\n"
 	if workDay.Id == 0 {
-		workDay, err = repo.CreateWorkDay(model.WorkDay{Date: midnight})
+		workDay, err = repo.CreateWorkDay(model.NewWorkDay(midnight))
 		if err != nil {
 			return fmt.Errorf("error creating new work day: %v", err)
 		}

@@ -82,37 +82,56 @@ func TestRunStartCmd(t *testing.T) {
 }
 
 func TestRunStartCmdNoWorkDay(t *testing.T) {
-	repo := testutil.NewRepo(t)
-	out := &bytes.Buffer{}
-
-	err := runStartCmd(out, repo, "")
-	testutil.AssertNoErr(t, err)
-
 	midnight := util.TodayAtMidnight()
-	testutil.AssertOutput(t, out, fmt.Sprintf("Started tracking time on NEW work day #1 (%s).\n", util.FormatDate(midnight)))
 
-	gotWorkDay, err := repo.GetWorkDayByDate(midnight)
-	testutil.AssertNoErr(t, err)
-	testutil.AssertEqualStructs(t, gotWorkDay, model.WorkDay{
-		Id:        1,
-		Date:      midnight,
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
-	})
-
-	gotWorkPeriods, err := repo.GetWorkPeriods(gotWorkDay)
-	testutil.AssertNoErr(t, err)
-
-	if len(gotWorkPeriods) != 1 {
-		t.Fatalf("Expected 1 work period, got %d", len(gotWorkPeriods))
+	testcases := []struct {
+		title          string
+		wantWorkDay    model.WorkDay
+		wantWorkPeriod model.WorkPeriod
+	}{
+		{
+			title: "default",
+			wantWorkDay: model.WorkDay{
+				Id:         1,
+				Date:       midnight,
+				LengthMins: model.DefaultDayLengthMins,
+				Note:       sql.NullString{Valid: false, String: ""},
+				CreatedAt:  time.Now(),
+				UpdatedAt:  time.Now(),
+			},
+			wantWorkPeriod: model.WorkPeriod{
+				Id:        1,
+				WorkDayId: 1,
+				StartAt:   time.Now(),
+				EndAt:     sql.NullTime{Valid: false, Time: time.Time{}},
+				CreatedAt: time.Now(),
+				UpdatedAt: time.Now(),
+			},
+		},
 	}
 
-	testutil.AssertEqualStructs(t, gotWorkPeriods[0], model.WorkPeriod{
-		Id:        1,
-		WorkDayId: gotWorkDay.Id,
-		StartAt:   time.Now(),
-		EndAt:     sql.NullTime{Valid: false},
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
-	})
+	for _, tc := range testcases {
+		t.Run(tc.title, func(t *testing.T) {
+			repo := testutil.NewRepo(t)
+			out := &bytes.Buffer{}
+
+			err := runStartCmd(out, repo, "")
+			testutil.AssertNoErr(t, err)
+
+			testutil.AssertOutput(t, out, fmt.Sprintf("Started tracking time on NEW work day #1 (%s).\n", util.FormatDate(midnight)))
+
+			gotWorkDay, err := repo.GetWorkDayByDate(midnight)
+			testutil.AssertNoErr(t, err)
+			testutil.AssertEqualStructs(t, gotWorkDay, tc.wantWorkDay)
+
+			gotWorkPeriods, err := repo.GetWorkPeriods(gotWorkDay)
+			testutil.AssertNoErr(t, err)
+
+			if len(gotWorkPeriods) != 1 {
+				t.Fatalf("Expected 1 work period, got %d", len(gotWorkPeriods))
+			}
+
+			testutil.AssertEqualStructs(t, gotWorkPeriods[0], tc.wantWorkPeriod)
+		})
+	}
 }
