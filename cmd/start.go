@@ -33,17 +33,20 @@ var startCmd = &cobra.Command{
 			timeStr = args[0]
 		}
 
-		if err := runStartCmd(os.Stdout, repo, timeStr); err != nil {
+		lengthStr := mustGetStringFlag(cmd, "length")
+		if err := runStartCmd(os.Stdout, repo, timeStr, lengthStr); err != nil {
 			log.Fatalln(err)
 		}
 	},
 }
 
 func init() {
+	startCmd.Flags().StringP("length", "l", "", "work day length (e.g. 4h30m)")
+
 	rootCmd.AddCommand(startCmd)
 }
 
-func runStartCmd(out io.Writer, repo *repository.Repo, timeStr string) error {
+func runStartCmd(out io.Writer, repo *repository.Repo, timeStr string, lengthStr string) error {
 	midnight := util.TodayAtMidnight()
 	startAt := time.Now()
 
@@ -72,7 +75,17 @@ func runStartCmd(out io.Writer, repo *repository.Repo, timeStr string) error {
 
 	outFormatString := "Started tracking time on work day #%d (%s).\n"
 	if workDay.Id == 0 {
-		workDay, err = repo.CreateWorkDay(model.NewWorkDay(midnight))
+		workDay = model.NewWorkDay(midnight)
+		if lengthStr != "" {
+			duration, err := time.ParseDuration(lengthStr)
+			if err != nil {
+				return fmt.Errorf("error parsing length string: %v", err)
+			}
+
+			workDay.LengthMins = int(duration.Minutes())
+		}
+
+		workDay, err = repo.CreateWorkDay(workDay)
 		if err != nil {
 			return fmt.Errorf("error creating new work day: %v", err)
 		}

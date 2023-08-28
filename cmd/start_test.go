@@ -65,7 +65,7 @@ func TestRunStartCmd(t *testing.T) {
 			workDay, err := repo.CreateWorkDay(model.NewWorkDay(today))
 			testutil.AssertNoErr(t, err)
 
-			err = runStartCmd(out, repo, tc.timeStr)
+			err = runStartCmd(out, repo, tc.timeStr, "")
 			testutil.AssertNoErr(t, err)
 			testutil.AssertOutput(t, out, fmt.Sprintf("Started tracking time on work day #1 (%s).\n", util.FormatDate(today)))
 
@@ -86,6 +86,7 @@ func TestRunStartCmdNoWorkDay(t *testing.T) {
 
 	testcases := []struct {
 		title          string
+		lengthStr      string
 		wantWorkDay    model.WorkDay
 		wantWorkPeriod model.WorkPeriod
 	}{
@@ -108,6 +109,26 @@ func TestRunStartCmdNoWorkDay(t *testing.T) {
 				UpdatedAt: time.Now(),
 			},
 		},
+		{
+			title:     "with length flag",
+			lengthStr: "1h30m",
+			wantWorkDay: model.WorkDay{
+				Id:         1,
+				Date:       midnight,
+				LengthMins: 90,
+				Note:       sql.NullString{Valid: false, String: ""},
+				CreatedAt:  time.Now(),
+				UpdatedAt:  time.Now(),
+			},
+			wantWorkPeriod: model.WorkPeriod{
+				Id:        1,
+				WorkDayId: 1,
+				StartAt:   time.Now(),
+				EndAt:     sql.NullTime{Valid: false, Time: time.Time{}},
+				CreatedAt: time.Now(),
+				UpdatedAt: time.Now(),
+			},
+		},
 	}
 
 	for _, tc := range testcases {
@@ -115,7 +136,7 @@ func TestRunStartCmdNoWorkDay(t *testing.T) {
 			repo := testutil.NewRepo(t)
 			out := &bytes.Buffer{}
 
-			err := runStartCmd(out, repo, "")
+			err := runStartCmd(out, repo, "", tc.lengthStr)
 			testutil.AssertNoErr(t, err)
 
 			testutil.AssertOutput(t, out, fmt.Sprintf("Started tracking time on NEW work day #1 (%s).\n", util.FormatDate(midnight)))
