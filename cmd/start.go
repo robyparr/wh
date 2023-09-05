@@ -29,14 +29,16 @@ var startCmd = &cobra.Command{
 			log.Fatalln(err)
 		}
 
-		var timeStr string
+		var cmdArgs startCmdArgs
 		if len(args) > 0 {
-			timeStr = args[0]
+			cmdArgs.timeStr = args[0]
 		}
 
-		lengthStr := mustGetStringFlag(cmd, "length")
-		note := mustGetStringFlag(cmd, "note")
-		if err := runStartCmd(os.Stdout, repo, timeStr, lengthStr, note); err != nil {
+		cmdArgs.lengthStr = mustGetStringFlag(cmd, "length")
+		cmdArgs.note = mustGetStringFlag(cmd, "note")
+		cmdArgs.dayNote = mustGetStringFlag(cmd, "day-note")
+
+		if err := runStartCmd(os.Stdout, repo, cmdArgs); err != nil {
 			log.Fatalln(err)
 		}
 	},
@@ -45,30 +47,16 @@ var startCmd = &cobra.Command{
 func init() {
 	startCmd.Flags().StringP("length", "l", "", "work day length (e.g. 4h30m)")
 	startCmd.Flags().StringP("note", "n", "", "work period note")
+	startCmd.Flags().StringP("day-note", "d", "", "work day note")
 
 	rootCmd.AddCommand(startCmd)
 }
 
-func runStartCmd(out io.Writer, repo *repository.Repo, timeStr string, lengthStr string, note string) error {
+func runStartCmd(out io.Writer, repo *repository.Repo, args startCmdArgs) error {
 	midnight := util.TodayAtMidnight()
-	startAt := time.Now()
-
-	switch {
-	case exactTimeRegex.MatchString(timeStr):
-		duration, err := parseExactTimeString(timeStr)
-		if err != nil {
-			return fmt.Errorf("error parsing time string:, %v", err)
-		}
-
-		startAt = midnight.Add(duration)
-
-	case relativeTimeRegex.MatchString(timeStr):
-		duration, err := time.ParseDuration(timeStr)
-		if err != nil {
-			return fmt.Errorf("error parsing time string: %v", err)
-		}
-
-		startAt = startAt.Add(duration)
+	startAt, err := args.resolveStartAt()
+	if err != nil {
+		return fmt.Errorf("error parsing time string:, %v", err)
 	}
 
 	workDay, err := repo.GetWorkDayByDate(midnight)
@@ -79,13 +67,17 @@ func runStartCmd(out io.Writer, repo *repository.Repo, timeStr string, lengthStr
 	outFormatString := "Started tracking time on work day #%d (%s).\n"
 	if workDay.Id == 0 {
 		workDay = model.NewWorkDay(midnight)
-		if lengthStr != "" {
-			duration, err := time.ParseDuration(lengthStr)
+		if args.lengthStr != "" {
+			duration, err := time.ParseDuration(args.lengthStr)
 			if err != nil {
 				return fmt.Errorf("error parsing length string: %v", err)
 			}
 
 			workDay.LengthMins = int(duration.Minutes())
+		}
+
+		if args.dayNote != "" {
+			workDay.Note = sql.NullString{Valid: true, String: args.dayNote}
 		}
 
 		workDay, err = repo.CreateWorkDay(workDay)
@@ -97,8 +89,8 @@ func runStartCmd(out io.Writer, repo *repository.Repo, timeStr string, lengthStr
 	}
 
 	period := model.WorkPeriod{WorkDayId: workDay.Id, StartAt: startAt}
-	if note != "" {
-		period.Note = sql.NullString{Valid: true, String: note}
+	if args.note != "" {
+		period.Note = sql.NullString{Valid: true, String: args.note}
 	}
 
 	_, err = repo.CreateWorkPeriod(period)
@@ -108,6 +100,36 @@ func runStartCmd(out io.Writer, repo *repository.Repo, timeStr string, lengthStr
 
 	fmt.Fprintf(out, outFormatString, workDay.Id, util.FormatDate(workDay.Date))
 	return nil
+}
+
+type startCmdArgs struct {
+	timeStr   string
+	lengthStr string
+	note      string
+	dayNote   string
+}
+
+func (args startCmdArgs) resolveStartAt() (time.Time, error) {
+	startAt := time.Now()
+
+	switch {
+	case exactTimeRegex.MatchString(args.timeStr):
+		duration, err := parseExactTimeString(args.timeStr)
+		if err != nil {
+			return time.Time{}, err
+		}
+
+		startAt = util.TodayAtMidnight().Add(duration)
+	case relativeTimeRegex.MatchString(args.timeStr):
+		duration, err := time.ParseDuration(args.timeStr)
+		if err != nil {
+			return time.Time{}, err
+		}
+
+		startAt = startAt.Add(duration)
+	}
+
+	return startAt, nil
 }
 
 func parseExactTimeString(str string) (time.Duration, error) {

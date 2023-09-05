@@ -15,8 +15,7 @@ import (
 func TestRunStartCmd(t *testing.T) {
 	type testCase struct {
 		title      string
-		timeStr    string
-		note       string
+		args       startCmdArgs
 		wantPeriod model.WorkPeriod
 	}
 
@@ -34,8 +33,8 @@ func TestRunStartCmd(t *testing.T) {
 			},
 		},
 		{
-			title:   "start with time arg",
-			timeStr: "09:00",
+			title: "start with time arg",
+			args:  startCmdArgs{timeStr: "09:00"},
 			wantPeriod: model.WorkPeriod{
 				Id:        1,
 				WorkDayId: 1,
@@ -46,8 +45,8 @@ func TestRunStartCmd(t *testing.T) {
 			},
 		},
 		{
-			title:   "start with relative time arg",
-			timeStr: "-1h30m",
+			title: "start with relative time arg",
+			args:  startCmdArgs{timeStr: "-1h30m"},
 			wantPeriod: model.WorkPeriod{
 				Id:        1,
 				WorkDayId: 1,
@@ -59,7 +58,7 @@ func TestRunStartCmd(t *testing.T) {
 		},
 		{
 			title: "with note flag",
-			note:  "This is a note.",
+			args:  startCmdArgs{note: "This is a note."},
 			wantPeriod: model.WorkPeriod{
 				Id:        1,
 				WorkDayId: 1,
@@ -79,7 +78,7 @@ func TestRunStartCmd(t *testing.T) {
 			workDay, err := repo.CreateWorkDay(model.NewWorkDay(today))
 			testutil.AssertNoErr(t, err)
 
-			err = runStartCmd(out, repo, tc.timeStr, "", tc.note)
+			err = runStartCmd(out, repo, tc.args)
 			testutil.AssertNoErr(t, err)
 			testutil.AssertOutput(t, out, fmt.Sprintf("Started tracking time on work day #1 (%s).\n", util.FormatDate(today)))
 
@@ -100,7 +99,7 @@ func TestRunStartCmdNoWorkDay(t *testing.T) {
 
 	testcases := []struct {
 		title          string
-		lengthStr      string
+		args           startCmdArgs
 		wantWorkDay    model.WorkDay
 		wantWorkPeriod model.WorkPeriod
 	}{
@@ -124,13 +123,34 @@ func TestRunStartCmdNoWorkDay(t *testing.T) {
 			},
 		},
 		{
-			title:     "with length flag",
-			lengthStr: "1h30m",
+			title: "with length flag",
+			args:  startCmdArgs{lengthStr: "1h30m"},
 			wantWorkDay: model.WorkDay{
 				Id:         1,
 				Date:       midnight,
 				LengthMins: 90,
 				Note:       sql.NullString{Valid: false, String: ""},
+				CreatedAt:  time.Now(),
+				UpdatedAt:  time.Now(),
+			},
+			wantWorkPeriod: model.WorkPeriod{
+				Id:        1,
+				WorkDayId: 1,
+				StartAt:   time.Now(),
+				EndAt:     sql.NullTime{Valid: false, Time: time.Time{}},
+				Note:      sql.NullString{Valid: false, String: ""},
+				CreatedAt: time.Now(),
+				UpdatedAt: time.Now(),
+			},
+		},
+		{
+			title: "with day note flag",
+			args:  startCmdArgs{dayNote: "This is a note."},
+			wantWorkDay: model.WorkDay{
+				Id:         1,
+				Date:       midnight,
+				LengthMins: model.DefaultDayLengthMins,
+				Note:       sql.NullString{Valid: true, String: "This is a note."},
 				CreatedAt:  time.Now(),
 				UpdatedAt:  time.Now(),
 			},
@@ -151,7 +171,7 @@ func TestRunStartCmdNoWorkDay(t *testing.T) {
 			repo := testutil.NewRepo(t)
 			out := &bytes.Buffer{}
 
-			err := runStartCmd(out, repo, "", tc.lengthStr, "")
+			err := runStartCmd(out, repo, tc.args)
 			testutil.AssertNoErr(t, err)
 
 			testutil.AssertOutput(t, out, fmt.Sprintf("Started tracking time on NEW work day #1 (%s).\n", util.FormatDate(midnight)))
