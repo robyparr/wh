@@ -112,8 +112,8 @@ func (r *Repo) CreateWorkPeriod(period model.WorkPeriod) (model.WorkPeriod, erro
 	period.UpdatedAt = now
 
 	result, err := r.db.NamedExec(`
-		INSERT INTO work_periods (work_day_id, start_at, end_at, created_at, updated_at)
-		VALUES (:work_day_id, :start_at, :end_at, :created_at, :updated_at)
+		INSERT INTO work_periods (work_day_id, start_at, end_at, created_at, updated_at, note)
+		VALUES (:work_day_id, :start_at, :end_at, :created_at, :updated_at, :note)
 	`, period)
 
 	if err != nil {

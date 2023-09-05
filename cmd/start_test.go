@@ -16,6 +16,7 @@ func TestRunStartCmd(t *testing.T) {
 	type testCase struct {
 		title      string
 		timeStr    string
+		note       string
 		wantPeriod model.WorkPeriod
 	}
 
@@ -56,6 +57,19 @@ func TestRunStartCmd(t *testing.T) {
 				UpdatedAt: time.Now(),
 			},
 		},
+		{
+			title: "with note flag",
+			note:  "This is a note.",
+			wantPeriod: model.WorkPeriod{
+				Id:        1,
+				WorkDayId: 1,
+				StartAt:   time.Now(),
+				EndAt:     sql.NullTime{Valid: false, Time: time.Time{}},
+				Note:      sql.NullString{Valid: true, String: "This is a note."},
+				CreatedAt: time.Now(),
+				UpdatedAt: time.Now(),
+			},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -65,7 +79,7 @@ func TestRunStartCmd(t *testing.T) {
 			workDay, err := repo.CreateWorkDay(model.NewWorkDay(today))
 			testutil.AssertNoErr(t, err)
 
-			err = runStartCmd(out, repo, tc.timeStr, "")
+			err = runStartCmd(out, repo, tc.timeStr, "", tc.note)
 			testutil.AssertNoErr(t, err)
 			testutil.AssertOutput(t, out, fmt.Sprintf("Started tracking time on work day #1 (%s).\n", util.FormatDate(today)))
 
@@ -125,6 +139,7 @@ func TestRunStartCmdNoWorkDay(t *testing.T) {
 				WorkDayId: 1,
 				StartAt:   time.Now(),
 				EndAt:     sql.NullTime{Valid: false, Time: time.Time{}},
+				Note:      sql.NullString{Valid: false, String: ""},
 				CreatedAt: time.Now(),
 				UpdatedAt: time.Now(),
 			},
@@ -136,7 +151,7 @@ func TestRunStartCmdNoWorkDay(t *testing.T) {
 			repo := testutil.NewRepo(t)
 			out := &bytes.Buffer{}
 
-			err := runStartCmd(out, repo, "", tc.lengthStr)
+			err := runStartCmd(out, repo, "", tc.lengthStr, "")
 			testutil.AssertNoErr(t, err)
 
 			testutil.AssertOutput(t, out, fmt.Sprintf("Started tracking time on NEW work day #1 (%s).\n", util.FormatDate(midnight)))

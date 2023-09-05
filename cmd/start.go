@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"database/sql"
 	"fmt"
 	"io"
 	"log"
@@ -34,7 +35,8 @@ var startCmd = &cobra.Command{
 		}
 
 		lengthStr := mustGetStringFlag(cmd, "length")
-		if err := runStartCmd(os.Stdout, repo, timeStr, lengthStr); err != nil {
+		note := mustGetStringFlag(cmd, "note")
+		if err := runStartCmd(os.Stdout, repo, timeStr, lengthStr, note); err != nil {
 			log.Fatalln(err)
 		}
 	},
@@ -42,11 +44,12 @@ var startCmd = &cobra.Command{
 
 func init() {
 	startCmd.Flags().StringP("length", "l", "", "work day length (e.g. 4h30m)")
+	startCmd.Flags().StringP("note", "n", "", "work period note")
 
 	rootCmd.AddCommand(startCmd)
 }
 
-func runStartCmd(out io.Writer, repo *repository.Repo, timeStr string, lengthStr string) error {
+func runStartCmd(out io.Writer, repo *repository.Repo, timeStr string, lengthStr string, note string) error {
 	midnight := util.TodayAtMidnight()
 	startAt := time.Now()
 
@@ -94,6 +97,10 @@ func runStartCmd(out io.Writer, repo *repository.Repo, timeStr string, lengthStr
 	}
 
 	period := model.WorkPeriod{WorkDayId: workDay.Id, StartAt: startAt}
+	if note != "" {
+		period.Note = sql.NullString{Valid: true, String: note}
+	}
+
 	_, err = repo.CreateWorkPeriod(period)
 	if err != nil {
 		return fmt.Errorf("error creating work period: %v", err)

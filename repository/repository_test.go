@@ -98,6 +98,7 @@ func TestCreateWorkPeriod(t *testing.T) {
 		WorkDayId: workDay.Id,
 		StartAt:   util.TodayAtMidnight().Add(9 * time.Hour),
 		EndAt:     sql.NullTime{Time: util.TodayAtMidnight().Add(10 * time.Hour), Valid: true},
+		Note:      sql.NullString{String: "Hello!", Valid: true},
 	}
 
 	got, err := repo.CreateWorkPeriod(workPeriod)
