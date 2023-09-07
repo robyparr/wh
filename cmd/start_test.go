@@ -94,6 +94,34 @@ func TestRunStartCmd(t *testing.T) {
 	}
 }
 
+func TestRunStartCmdWithOpenPeriod(t *testing.T) {
+	repo := testutil.NewRepo(t)
+	out := &bytes.Buffer{}
+	today := util.TodayAtMidnight()
+	workday, err := repo.CreateWorkDay(model.NewWorkDay(today))
+	testutil.AssertNoErr(t, err)
+
+	_, err = repo.CreateWorkPeriod(model.WorkPeriod{WorkDayId: workday.Id, StartAt: time.Now()})
+	testutil.AssertNoErr(t, err)
+
+	err = runStartCmd(out, repo, startCmdArgs{})
+	testutil.AssertNoErr(t, err)
+
+	got := out.String()
+	want := "This work day already has an open work period.\n"
+	if got != want {
+		t.Errorf("got '%s', want '%s'", got, want)
+	}
+
+	periods, err := repo.GetWorkPeriods(workday)
+	testutil.AssertNoErr(t, err)
+
+	gotPeriodCount := len(periods)
+	if gotPeriodCount != 1 {
+		t.Errorf("got %d work periods, want %d", gotPeriodCount, 1)
+	}
+}
+
 func TestRunStartCmdNoWorkDay(t *testing.T) {
 	midnight := util.TodayAtMidnight()
 

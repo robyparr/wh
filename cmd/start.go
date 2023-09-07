@@ -64,6 +64,17 @@ func runStartCmd(out io.Writer, repo *repository.Repo, args startCmdArgs) error 
 		return fmt.Errorf("error loading work day: %v", err)
 	}
 
+	workPeriods, err := repo.GetWorkPeriods(workDay)
+	if err != nil {
+		return fmt.Errorf("error loading work periods: %v", err)
+	}
+	for _, wp := range workPeriods {
+		if wp.EndAt.Time.IsZero() {
+			fmt.Fprintln(out, "This work day already has an open work period.")
+			return nil
+		}
+	}
+
 	outFormatString := "Started tracking time on work day #%d (%s).\n"
 	if workDay.Id == 0 {
 		workDay = model.NewWorkDay(midnight)
