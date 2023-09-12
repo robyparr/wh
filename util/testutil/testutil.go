@@ -39,9 +39,9 @@ func AssertOutput(t *testing.T, got *bytes.Buffer, want string) {
 func AssertWorkDay(t *testing.T, got model.WorkDay, want model.WorkDay) {
 	t.Helper()
 
-	assertAroundTime(t, "Date", got.Date, want.Date)
-	assertAroundTime(t, "CreatedAt", got.CreatedAt, want.CreatedAt)
-	assertAroundTime(t, "UpdatedAt", got.UpdatedAt, want.UpdatedAt)
+	AssertAroundTime(t, "Date", got.Date, want.Date)
+	AssertAroundTime(t, "CreatedAt", got.CreatedAt, want.CreatedAt)
+	AssertAroundTime(t, "UpdatedAt", got.UpdatedAt, want.UpdatedAt)
 
 	got.Date = time.Time{}
 	got.CreatedAt = time.Time{}
@@ -95,7 +95,7 @@ func AssertEqualStructs(t *testing.T, got any, want any) {
 	}
 }
 
-func assertAroundTime(t *testing.T, label string, got time.Time, want time.Time) {
+func AssertAroundTime(t *testing.T, label string, got time.Time, want time.Time) {
 	t.Helper()
 
 	if !isAroundTime(got, want) {

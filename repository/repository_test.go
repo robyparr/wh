@@ -152,3 +152,63 @@ func TestGetWorkPeriods(t *testing.T) {
 		testutil.AssertEqualStructs(t, workPeriod2, gotWorkPeriods[1])
 	})
 }
+
+func TestGetOpenWorkPeriod(t *testing.T) {
+	repo := testutil.NewRepo(t)
+	workDay, err := repo.CreateWorkDay(model.NewWorkDayToday())
+	testutil.AssertNoErr(t, err)
+
+	t.Run("no work periods", func(t *testing.T) {
+		gotPeriod, err := repo.GetOpenWorkPeriod(workDay)
+		testutil.AssertNoErr(t, err)
+
+		if gotPeriod.Id != 0 {
+			t.Errorf("Expected an empty work period, got %+v", gotPeriod)
+		}
+	})
+
+	t.Run("closed work period", func(t *testing.T) {
+		closedPeriod := model.NewWorkPeriod(workDay)
+		closedPeriod.EndAt = sql.NullTime{Valid: true, Time: time.Now()}
+
+		_, err := repo.CreateWorkPeriod(closedPeriod)
+		testutil.AssertNoErr(t, err)
+
+		gotPeriod, err := repo.GetOpenWorkPeriod(workDay)
+		testutil.AssertNoErr(t, err)
+
+		if gotPeriod.Id != 0 {
+			t.Errorf("Expected an empty work period, got %+v", gotPeriod)
+		}
+	})
+
+	t.Run("open work period", func(t *testing.T) {
+		wantPeriod, err := repo.CreateWorkPeriod(model.NewWorkPeriod(workDay))
+		testutil.AssertNoErr(t, err)
+
+		gotPeriod, err := repo.GetOpenWorkPeriod(workDay)
+		testutil.AssertNoErr(t, err)
+
+		testutil.AssertEqualStructs(t, gotPeriod, wantPeriod)
+	})
+}
+
+func TestUpdateWorkPeriod(t *testing.T) {
+	repo := testutil.NewRepo(t)
+	workDay, err := repo.CreateWorkDay(model.NewWorkDayToday())
+	testutil.AssertNoErr(t, err)
+
+	period, err := repo.CreateWorkPeriod(model.WorkPeriod{WorkDayId: workDay.Id, StartAt: util.TodayAtMidnight()})
+	testutil.AssertNoErr(t, err)
+
+	period.SetEndAt(time.Now())
+	period.SetNote("Hello!")
+	updatedAtBefore := period.UpdatedAt
+
+	gotPeriod, err := repo.UpdateWorkPeriod(period)
+	testutil.AssertNoErr(t, err)
+	testutil.AssertEqualStructs(t, gotPeriod, period)
+	if !gotPeriod.UpdatedAt.After(updatedAtBefore) {
+		t.Error("Expected UpdatedAt to have changed but it didn't.")
+	}
+}

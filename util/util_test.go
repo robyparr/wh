@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/robyparr/wh/util"
+	"github.com/robyparr/wh/util/testutil"
 )
 
 func TestTodayAtMidnight(t *testing.T) {
@@ -25,5 +26,30 @@ func TestFormatDate(t *testing.T) {
 
 	if got != want {
 		t.Errorf("got '%s', want '%s'", got, want)
+	}
+}
+
+func TestParseTimeString(t *testing.T) {
+	midnight := util.TodayAtMidnight()
+
+	testCases := []struct {
+		name  string
+		input string
+		want  time.Time
+	}{
+		{name: "empty string", input: "", want: time.Now()},
+		{name: "exact time", input: "09:30", want: midnight.Add(9 * time.Hour).Add(30 * time.Minute)},
+		{name: "exact time afternoon", input: "13:00", want: midnight.Add(13 * time.Hour)},
+		{name: "relative time", input: "1h30m", want: time.Now().Add(90 * time.Minute)},
+		{name: "relative time mins", input: "30m", want: time.Now().Add(30 * time.Minute)},
+		{name: "relative time past", input: "-30m", want: time.Now().Add(-30 * time.Minute)},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := util.ParseTimeString(tc.input)
+			testutil.AssertNoErr(t, err)
+			testutil.AssertAroundTime(t, "result", got, tc.want)
+		})
 	}
 }

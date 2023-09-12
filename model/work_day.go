@@ -3,6 +3,8 @@ package model
 import (
 	"database/sql"
 	"time"
+
+	"github.com/robyparr/wh/util"
 )
 
 type WorkDay struct {
@@ -21,6 +23,10 @@ func NewWorkDay(date time.Time) WorkDay {
 		Date:       date,
 		LengthMins: DefaultDayLengthMins,
 	}
+}
+
+func NewWorkDayToday() WorkDay {
+	return NewWorkDay(util.TodayAtMidnight())
 }
 
 func (w *WorkDay) SetNote(note string) {

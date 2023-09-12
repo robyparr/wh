@@ -2,6 +2,7 @@ package repository
 
 import (
 	"database/sql"
+	"errors"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -34,6 +35,8 @@ const schema string = `
 `
 
 const DefaultDatabasePath string = "./db.sqlite"
+
+var errNoUpdatedRows error = errors.New("no rows were updated")
 
 func NewRepo(filepath string) (*Repo, error) {
 	db, err := sqlx.Open("sqlite3", filepath)
@@ -136,4 +139,44 @@ func (r *Repo) GetWorkPeriods(workDay model.WorkDay) ([]model.WorkPeriod, error)
 	}
 
 	return periods, nil
+}
+
+func (r *Repo) GetOpenWorkPeriod(workDay model.WorkDay) (model.WorkPeriod, error) {
+	var period model.WorkPeriod
+	if err := r.db.Get(&period, "SELECT * FROM work_periods WHERE work_day_id = ? AND end_at IS NULL;", workDay.Id); err != nil {
+		if err == sql.ErrNoRows {
+			return model.WorkPeriod{}, nil
+		}
+
+		return model.WorkPeriod{}, err
+	}
+
+	return period, nil
+}
+
+func (r *Repo) UpdateWorkPeriod(workPeriod model.WorkPeriod) (model.WorkPeriod, error) {
+	workPeriod.UpdatedAt = time.Now()
+
+	result, err := r.db.NamedExec(`
+		UPDATE work_periods
+		SET end_at = :end_at,
+				updated_at = :updated_at,
+				note = :note
+		WHERE id = :id
+	`, workPeriod)
+
+	if err != nil {
+		return model.WorkPeriod{}, err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return model.WorkPeriod{}, err
+	}
+
+	if rowsAffected == 0 {
+		return model.WorkPeriod{}, errNoUpdatedRows
+	}
+
+	return workPeriod, nil
 }

@@ -1,14 +1,10 @@
 package cmd
 
 import (
-	"database/sql"
 	"fmt"
 	"io"
 	"log"
 	"os"
-	"regexp"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/robyparr/wh/model"
@@ -17,8 +13,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var exactTimeRegex = regexp.MustCompile(`^\d{2}:\d{2}$`)
-var relativeTimeRegex = regexp.MustCompile(`^(-?\d+h(\d+m)?)|(-?\d+m)$`)
+type startCmdArgs struct {
+	timeStr   string
+	lengthStr string
+	note      string
+	dayNote   string
+}
 
 var startCmd = &cobra.Command{
 	Use:   "start [time]",
@@ -54,7 +54,7 @@ func init() {
 
 func runStartCmd(out io.Writer, repo *repository.Repo, args startCmdArgs) error {
 	midnight := util.TodayAtMidnight()
-	startAt, err := args.resolveStartAt()
+	startAt, err := util.ParseTimeString(args.timeStr)
 	if err != nil {
 		return fmt.Errorf("error parsing time string:, %v", err)
 	}
@@ -88,7 +88,7 @@ func runStartCmd(out io.Writer, repo *repository.Repo, args startCmdArgs) error 
 		}
 
 		if args.dayNote != "" {
-			workDay.Note = sql.NullString{Valid: true, String: args.dayNote}
+			workDay.SetNote(args.dayNote)
 		}
 
 		workDay, err = repo.CreateWorkDay(workDay)
@@ -101,7 +101,7 @@ func runStartCmd(out io.Writer, repo *repository.Repo, args startCmdArgs) error 
 
 	period := model.WorkPeriod{WorkDayId: workDay.Id, StartAt: startAt}
 	if args.note != "" {
-		period.Note = sql.NullString{Valid: true, String: args.note}
+		period.SetNote(args.note)
 	}
 
 	_, err = repo.CreateWorkPeriod(period)
@@ -111,49 +111,4 @@ func runStartCmd(out io.Writer, repo *repository.Repo, args startCmdArgs) error 
 
 	fmt.Fprintf(out, outFormatString, workDay.Id, util.FormatDate(workDay.Date))
 	return nil
-}
-
-type startCmdArgs struct {
-	timeStr   string
-	lengthStr string
-	note      string
-	dayNote   string
-}
-
-func (args startCmdArgs) resolveStartAt() (time.Time, error) {
-	startAt := time.Now()
-
-	switch {
-	case exactTimeRegex.MatchString(args.timeStr):
-		duration, err := parseExactTimeString(args.timeStr)
-		if err != nil {
-			return time.Time{}, err
-		}
-
-		startAt = util.TodayAtMidnight().Add(duration)
-	case relativeTimeRegex.MatchString(args.timeStr):
-		duration, err := time.ParseDuration(args.timeStr)
-		if err != nil {
-			return time.Time{}, err
-		}
-
-		startAt = startAt.Add(duration)
-	}
-
-	return startAt, nil
-}
-
-func parseExactTimeString(str string) (time.Duration, error) {
-	timeStrParts := strings.Split(str, ":")
-	hour, err := strconv.Atoi(timeStrParts[0])
-	if err != nil {
-		return 0, nil
-	}
-	min, err := strconv.Atoi(timeStrParts[1])
-	if err != nil {
-		return 0, err
-	}
-
-	totalMinutes := (hour * 60) + min
-	return time.Duration(totalMinutes) * time.Minute, nil
 }
