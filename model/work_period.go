@@ -29,3 +29,12 @@ func (wp *WorkPeriod) SetEndAt(t time.Time) {
 func (wp *WorkPeriod) SetNote(str string) {
 	wp.Note = sql.NullString{Valid: str != "", String: str}
 }
+
+func (wp *WorkPeriod) TimeWorked() time.Duration {
+	endAt := wp.EndAt.Time
+	if endAt.IsZero() {
+		endAt = time.Now()
+	}
+
+	return endAt.Sub(wp.StartAt)
+}

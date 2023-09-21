@@ -2,6 +2,7 @@ package repository_test
 
 import (
 	"database/sql"
+	"reflect"
 	"testing"
 	"time"
 
@@ -45,7 +46,7 @@ func TestGetWorkDayByDate(t *testing.T) {
 		testutil.AssertNoErr(t, err)
 
 		var emptyWorkDay model.WorkDay
-		if got != emptyWorkDay {
+		if !reflect.DeepEqual(got, emptyWorkDay) {
 			t.Errorf("Expected empty workday, got %+v\n", got)
 		}
 	})

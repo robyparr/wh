@@ -1,0 +1,7 @@
+{{ .Title }}
+
+Work Day: 				{{ .DayLength }}
+Time Worked:			{{ .TimeWorked }}
+Time Remaining:		{{ .TimeRemaining }}
+Estimated Finish: {{ .EstimatedFinish }}
+Note:							{{ .Note }}

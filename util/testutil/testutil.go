@@ -68,6 +68,9 @@ func AssertEqualStructs(t *testing.T, got any, want any) {
 		gotFieldValue := gotStructValue.Field(i)
 		wantFieldValue := wantStructValue.Field(i)
 
+		if !gotFieldValue.CanInterface() {
+			continue
+		}
 		gotValue := gotFieldValue.Interface()
 		wantValue := wantFieldValue.Interface()
 
