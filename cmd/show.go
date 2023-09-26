@@ -65,6 +65,21 @@ func runShowCmd(out io.Writer, repo *repository.Repo, dateStr string) error {
 		EstimatedFinish: util.FormatDateTime(workDay.EstimatedFinish()),
 		Note:            workDay.Note.String,
 	}
+	for _, wp := range workPeriods {
+		endAt := "-"
+		if !wp.EndAt.Time.IsZero() {
+			endAt = util.FormatDateTime(wp.EndAt.Time)
+		}
+
+		vm.WorkPeriods = append(vm.WorkPeriods, showPeriodViewModel{
+			Id:         wp.Id,
+			StartAt:    util.FormatDateTime(wp.StartAt),
+			EndAt:      fmt.Sprintf("%-20s", endAt),
+			TimeWorked: util.FormatDuration(wp.TimeWorked()),
+			Note:       wp.Note.String,
+		})
+	}
+
 	if err := template.Render(out, "work_day_show.txt", vm); err != nil {
 		return err
 	}
@@ -79,4 +94,13 @@ type showViewModel struct {
 	TimeRemaining   string
 	EstimatedFinish string
 	Note            string
+	WorkPeriods     []showPeriodViewModel
+}
+
+type showPeriodViewModel struct {
+	Id         int
+	StartAt    string
+	EndAt      string
+	TimeWorked string
+	Note       string
 }

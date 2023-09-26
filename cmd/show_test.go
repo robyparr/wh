@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"bytes"
-	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -41,7 +40,6 @@ func TestRunShowCmd(t *testing.T) {
 		err = runShowCmd(out, repo, "2023-09-01")
 		testutil.AssertNoErr(t, err)
 
-		wantEstFinish := time.Now().Add(7 * time.Hour).Add(30 * time.Minute)
 		compareShowOutput(
 			t,
 			out.String(),
@@ -49,34 +47,42 @@ func TestRunShowCmd(t *testing.T) {
 September 01, 2023 (Fri)
 ========================
 
-Work Day: 				7h30m
-Time Worked:			0m
+Work Day: 		7h30m
+Time Worked:		0m
 Time Remaining:		7h30m
-Estimated Finish: %s
-Note:							This is a note.
+Estimated Finish:	:estFinish
+Note:			This is a note.
+
+
+WORK PERIODS
+ID	START			END			TIME WORKED	NOTE
+
 `,
-			wantEstFinish,
+			map[string]string{
+				"estFinish": util.FormatDateTime(time.Now().Add(7 * time.Hour).Add(30 * time.Minute)),
+			},
 		)
 	})
 
 	t.Run("with work periods", func(t *testing.T) {
-		wp := model.NewWorkPeriod(wd)
-		wp.SetEndAt(wp.StartAt.Add(1 * time.Hour))
+		wp1 := model.NewWorkPeriod(wd)
+		wp1.StartAt = time.Date(2023, 9, 1, 9, 0, 0, 0, time.Local)
+		wp1.SetEndAt(wp1.StartAt.Add(1 * time.Hour))
+		wp1.SetNote("Period note.")
 
-		_, err = repo.CreateWorkPeriod(wp)
+		_, err = repo.CreateWorkPeriod(wp1)
 		testutil.AssertNoErr(t, err)
 
-		wp = model.NewWorkPeriod(wd)
-		wp.StartAt = time.Now().Add(2 * time.Hour)
-		wp.SetEndAt(wp.StartAt.Add(30 * time.Minute))
-		_, err = repo.CreateWorkPeriod(wp)
+		wp2 := model.NewWorkPeriod(wd)
+		wp2.StartAt = time.Date(2023, 9, 1, 10, 0, 0, 0, time.Local)
+		wp2.SetEndAt(wp2.StartAt.Add(30 * time.Minute))
+		_, err = repo.CreateWorkPeriod(wp2)
 		testutil.AssertNoErr(t, err)
 
 		out := &bytes.Buffer{}
 		err = runShowCmd(out, repo, "2023-09-01")
 		testutil.AssertNoErr(t, err)
 
-		wantEstFinish := time.Now().Add(6 * time.Hour)
 		compareShowOutput(
 			t,
 			out.String(),
@@ -84,20 +90,33 @@ Note:							This is a note.
 September 01, 2023 (Fri)
 ========================
 
-Work Day: 				7h30m
-Time Worked:			1h30m
+Work Day: 		7h30m
+Time Worked:		1h30m
 Time Remaining:		6h0m
-Estimated Finish: %s
-Note:							This is a note.
+Estimated Finish:	:estFinish
+Note:			This is a note.
+
+
+WORK PERIODS
+ID	START			END			TIME WORKED	NOTE
+1	2023-09-01 9:00 AM	2023-09-01 10:00 AM 	1h0m		Period note.
+2	2023-09-01 10:00 AM	2023-09-01 10:30 AM 	30m	:tab
+
 `,
-			wantEstFinish,
+			map[string]string{
+				"estFinish":    util.FormatDateTime(time.Now().Add(6 * time.Hour)),
+				"p2TimeWorked": util.FormatDuration(wp2.TimeWorked()),
+				"tab":          "	",
+			},
 		)
 	})
 }
 
-func compareShowOutput(t *testing.T, got string, want string, wantEstFinish time.Time) {
-	want = fmt.Sprintf(want, util.FormatDateTime(wantEstFinish))
+func compareShowOutput(t *testing.T, got string, want string, replacements map[string]string) {
 	want = strings.TrimPrefix(want, "\n")
+	for k, v := range replacements {
+		want = strings.ReplaceAll(want, ":"+k, v)
+	}
 
 	if got != want {
 		t.Errorf("got `%s`, want `%s`", got, want)

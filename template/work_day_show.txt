@@ -1,7 +1,15 @@
 {{ .Title }}
 
-Work Day: 				{{ .DayLength }}
-Time Worked:			{{ .TimeWorked }}
+Work Day: 		{{ .DayLength }}
+Time Worked:		{{ .TimeWorked }}
 Time Remaining:		{{ .TimeRemaining }}
-Estimated Finish: {{ .EstimatedFinish }}
-Note:							{{ .Note }}
+Estimated Finish:	{{ .EstimatedFinish }}
+{{- if ne .Note "" }}
+Note:			{{ .Note }}
+{{ end }}
+
+WORK PERIODS
+ID	START			END			TIME WORKED	NOTE
+{{ range .WorkPeriods }}
+  {{- .Id }}	{{ .StartAt }}	{{ .EndAt }}	{{ .TimeWorked }}		{{ .Note }}
+{{ end }}
